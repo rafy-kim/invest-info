@@ -2,18 +2,7 @@ import streamlit as st
 from dotenv import load_dotenv
 import os
 import pandas as pd
-from supabase import create_client, Client
-from get_apt_data import get_apt_data, get_apt_list
-ENV_LOAD = load_dotenv()
-if ENV_LOAD:
-    url: str = os.environ.get("SUPABASE_URL")
-    key: str = os.environ.get("SUPABASE_KEY")
-    supabase: Client = create_client(url, key)
-
-else:
-    url: str = st.secrets["SUPABASE_URL"]
-    key: str = st.secrets["SUPABASE_KEY"]
-    supabase: Client = create_client(url, key)
+from get_apt_data import get_apt_data, get_apt_list, supabase
 
 st.set_page_config(
     page_title="Home",

@@ -3,18 +3,14 @@ from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 import os
-import MySQLdb
-from MySQLdb.cursors import DictCursor
-from supabase import create_client, Client
 
 from apt_value import get_APT_transactions, get_APT_info
 
 # Load environment variables from the .env file
 load_dotenv()
 
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
+# 로컬 DB 사용
+from local_db import supabase
 
 
 # # Connect to the database
@@ -61,15 +57,23 @@ try:
             if not res:
                 print(f'{apt_name} - {PY} - {DEAL_TYPE}: 데이터 없음')
 
-            price_trend = json.loads(res['price_trend'])
+            # price_trend가 이미 리스트인 경우 처리
+            pt = res['price_trend']
+            if pt is None:
+                price_trend = []
+            elif isinstance(pt, str):
+                price_trend = json.loads(pt)
+            elif isinstance(pt, list):
+                price_trend = pt
+            else:
+                price_trend = []
             print("현재 price_trend:")
             print(price_trend)
 
             # 오늘 날짜
             today = datetime.today()
-            # TODO: 오늘 날짜를 고려해서 최근 3개월치만 업데이트하기
-            # 3개월 전 날짜
-            prev_date = today - timedelta(days=180)
+            # 1년 전 날짜부터 업데이트
+            prev_date = today - timedelta(days=365)
             str_date = prev_date.strftime("%Y%m")
             print(f'기준일: {str_date}')
             price_trend = [d for d in price_trend if d['date'] < str_date]
@@ -88,6 +92,7 @@ try:
                 print(filtered_amount)
                 price_trend.extend(filtered_amount)
 
+            price_trend = sorted(price_trend, key=lambda x: x['date'])
             print("최종적으로 DB에 업데이트 할 price_trend 데이터")
             print(price_trend)
 
@@ -100,12 +105,8 @@ try:
             print("업데이트 완료!!")
 
 
-except MySQLdb.Error as e:
-    print("MySQL Error:", e)
+except Exception as e:
+    print("Error:", e)
 
 finally:
-    # Close the cursor and connection
-    # cur.close()
-    # connection.close()
-
     print('Finished')

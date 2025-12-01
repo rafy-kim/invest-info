@@ -1,38 +1,8 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from dotenv import load_dotenv
-import os
 from urllib.error import URLError
-from supabase import create_client, Client
 from get_apt_data import get_apt_data, get_apt_list
-
-# st.set_page_config(page_title="아파트", page_icon="🏠")
-ENV_LOAD = load_dotenv()
-if ENV_LOAD:
-    # Connect to the database
-    # connection = pymysql.connect(
-    #   host=os.getenv("DATABASE_HOST"),
-    #   user=os.getenv("DATABASE_USERNAME"),
-    #   password=os.getenv("DATABASE_PASSWORD"),
-    #   database=os.getenv("DATABASE"),
-    #   ssl_verify_identity=True,
-    # )
-    url: str = os.environ.get("SUPABASE_URL")
-    key: str = os.environ.get("SUPABASE_KEY")
-    supabase: Client = create_client(url, key)
-
-else:
-    # connection = pymysql.connect(
-    #     host=st.secrets["DATABASE_HOST"],
-    #     user=st.secrets["DATABASE_USERNAME"],
-    #     password=st.secrets["DATABASE_PASSWORD"],
-    #     database=st.secrets["DATABASE"],
-    #     ssl_verify_identity=True,
-    # )
-    url: str = st.secrets["SUPABASE_URL"]
-    key: str = st.secrets["SUPABASE_KEY"]
-    supabase: Client = create_client(url, key)
 
 st.markdown("# 아파트")
 st.sidebar.header("아파트")

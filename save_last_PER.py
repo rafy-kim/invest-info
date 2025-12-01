@@ -1,31 +1,15 @@
 import json
 import pandas as pd
 from dotenv import load_dotenv
+from datetime import datetime
 import os
-import MySQLdb
-from MySQLdb.cursors import DictCursor
-from supabase import create_client, Client
-from apt_value import get_APT_transactions, get_APT_info
 from get_apt_data import get_apt_list, get_apt_data
 
 # Load environment variables from the .env file
 load_dotenv()
 
-# # Connect to the database
-# connection = MySQLdb.connect(
-#   host=os.getenv("DATABASE_HOST"),
-#   user=os.getenv("DATABASE_USERNAME"),
-#   passwd=os.getenv("DATABASE_PASSWORD"),
-#   db=os.getenv("DATABASE"),
-#   autocommit=True,
-#   # ssl_mode="VERIFY_IDENTITY",
-#   # See https://planetscale.com/docs/concepts/secure-connections#ca-root-configuration
-#   # to determine the path to your operating systems certificate file.
-#   # ssl={ "ca": "" }
-# )
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
+# 로컬 DB 사용
+from local_db import supabase
 
 
 def load_data(dataset1, dataset2):
@@ -85,7 +69,7 @@ try:
     # Create a cursor to interact with the database
     apts = get_apt_list()
     for apt in apts:
-        apt_name, apt_PY, dataset1, dataset2, dataset3 = get_apt_data(apt)
+        apt_name, apt_PY, dataset1, dataset2, dataset3 = get_apt_data(apt['name'])
         df = load_data(dataset1, dataset3)
         df = df.set_index('Date')
 
@@ -126,7 +110,12 @@ try:
             #     f"last_avg_price = '{last_avg_price}', last_avg_rent = '{last_avg_rent}', "
             #     f"last_PER = '{last_PER}' WHERE id = '{res['id']}'")
             # connection.commit()
-            response = supabase.table('APTLastPER').update({'last_avg_price': last_avg_price, 'last_avg_rent': last_avg_rent, 'last_PER': last_PER}).eq('id', res['id']).execute()
+            response = supabase.table('APTLastPER').update({
+                'last_avg_price': last_avg_price,
+                'last_avg_rent': last_avg_rent,
+                'last_PER': last_PER,
+                'updated': datetime.now().isoformat()
+            }).eq('id', res['id']).execute()
         else:
             # print('최초 생성')
             # cur.execute(
@@ -137,11 +126,8 @@ try:
                 {'apt_name': apt_name, 'apt_PY': apt_PY, 'last_avg_price': last_avg_price, 'last_avg_rent': last_avg_rent, 'last_PER': last_PER}).execute()
 
 
-except MySQLdb.Error as e:
-    print("MySQL Error:", e)
+except Exception as e:
+    print("Error:", e)
 
 finally:
-    # # Close the cursor and connection
-    # cur.close()
-    # connection.close()
     print("Finished")

@@ -1,36 +1,29 @@
 import json
 import streamlit as st
-# import MySQLdb
-# from MySQLdb.cursors import DictCursor
-# from draw_plot import draw_plot
-from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
 
-ENV_LOAD = load_dotenv()
-if ENV_LOAD:
-    # Connect to the database
-    # connection = pymysql.connect(
-    #   host=os.getenv("DATABASE_HOST"),
-    #   user=os.getenv("DATABASE_USERNAME"),
-    #   password=os.getenv("DATABASE_PASSWORD"),
-    #   database=os.getenv("DATABASE"),
-    #   ssl_verify_identity=True,
-    # )
-    url: str = os.environ.get("SUPABASE_URL")
-    key: str = os.environ.get("SUPABASE_KEY")
-    supabase: Client = create_client(url, key)
+load_dotenv()
 
+# 로컬 DB 사용 여부 확인 (SUPABASE_URL이 없으면 로컬 DB 사용)
+def _check_use_local_db():
+    if os.environ.get("SUPABASE_URL"):
+        return False
+    try:
+        if st.secrets.get("SUPABASE_URL"):
+            return False
+    except (FileNotFoundError, KeyError):
+        pass
+    return True
+
+USE_LOCAL_DB = _check_use_local_db()
+
+if USE_LOCAL_DB:
+    from local_db import supabase
 else:
-    # connection = pymysql.connect(
-    #     host=st.secrets["DATABASE_HOST"],
-    #     user=st.secrets["DATABASE_USERNAME"],
-    #     password=st.secrets["DATABASE_PASSWORD"],
-    #     database=st.secrets["DATABASE"],
-    #     ssl_verify_identity=True,
-    # )
-    url: str = st.secrets["SUPABASE_URL"]
-    key: str = st.secrets["SUPABASE_KEY"]
+    from supabase import create_client, Client
+    url = os.environ.get("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
     supabase: Client = create_client(url, key)
 
 
@@ -41,23 +34,41 @@ def get_apt_data(apt_display_name):
     """
     try:
         # 표시 이름에서 실제 이름과 평형 추출
-        apt_name = apt_display_name.split(" (")[0]
-        PY = apt_display_name.split("(")[1].split("평")[0]
+        # "아파트이름 (평형평)" 형식에서 마지막 괄호를 기준으로 파싱
+        # 예: "래미안슈르(301~342동) (34평)" -> name: "래미안슈르(301~342동)", PY: "34"
+        last_paren_idx = apt_display_name.rfind(" (")
+        if last_paren_idx != -1:
+            apt_name = apt_display_name[:last_paren_idx]
+            PY = apt_display_name[last_paren_idx+2:].split("평")[0]
+        else:
+            # 폴백: 기존 방식
+            apt_name = apt_display_name.split(" (")[0]
+            PY = apt_display_name.split("(")[1].split("평")[0]
         
+        def parse_price_trend(data):
+            """price_trend를 파싱하는 헬퍼 함수 - 이미 리스트면 그대로 반환"""
+            if data is None:
+                return []
+            if isinstance(data, list):
+                return data
+            if isinstance(data, str):
+                return json.loads(data)
+            return []
+
         # 매매 데이터 가져오기 (DEAL_TYPE = '1')
         response = supabase.table('APTInfo').select('*').eq('name', apt_name).eq('PY', PY).eq('DEAL_TYPE', '1').limit(1).single().execute()
         res1 = response.data
-        dataset1 = json.loads(res1['price_trend']) if res1 else []
-        
+        dataset1 = parse_price_trend(res1['price_trend']) if res1 else []
+
         # 전세 데이터 가져오기 (DEAL_TYPE = '2')
         response = supabase.table('APTInfo').select('*').eq('name', apt_name).eq('PY', PY).eq('DEAL_TYPE', '2').limit(1).single().execute()
         res2 = response.data
-        dataset2 = json.loads(res2['price_trend']) if res2 else []
-        
+        dataset2 = parse_price_trend(res2['price_trend']) if res2 else []
+
         # 월세 데이터 가져오기 (DEAL_TYPE = '3')
         response = supabase.table('APTInfo').select('*').eq('name', apt_name).eq('PY', PY).eq('DEAL_TYPE', '3').limit(1).single().execute()
         res3 = response.data
-        dataset3 = json.loads(res3['price_trend']) if res3 else []
+        dataset3 = parse_price_trend(res3['price_trend']) if res3 else []
         
         return apt_name, PY, dataset1, dataset2, dataset3
         
