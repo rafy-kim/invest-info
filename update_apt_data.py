@@ -72,8 +72,8 @@ try:
 
             # 오늘 날짜
             today = datetime.today()
-            # 1년 전 날짜부터 업데이트
-            prev_date = today - timedelta(days=365)
+            # 6개월 전 날짜부터 업데이트
+            prev_date = today - timedelta(days=180)
             str_date = prev_date.strftime("%Y%m")
             print(f'기준일: {str_date}')
             price_trend = [d for d in price_trend if d['date'] < str_date]

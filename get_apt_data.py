@@ -127,9 +127,10 @@ def update_apt_year():
 def get_apt_list():
     """
     아파트 목록을 name, year, PY, address와 함께 반환하는 함수
+    status=1인 (활성화된) 아파트만 반환
     """
     try:
-        data = supabase.table('APTInfo').select('name, year, PY, address').execute().data
+        data = supabase.table('APTInfo').select('name, year, PY, address').eq('status', 1).execute().data
         # 중복 제거 및 정렬 (이름과 평형을 함께 고려)
         unique_apts = {}
         for d in data:
